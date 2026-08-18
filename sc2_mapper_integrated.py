@@ -657,12 +657,12 @@ class MapperGUI:
         self.root.update_idletasks()
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
-        win_w = min(1900, int(screen_w * 0.95))
-        win_h = min(1200, int(screen_h * 0.95))
+        win_w = min(2200, int(screen_w * 0.98))
+        win_h = min(1400, int(screen_h * 0.98))
         pos_x = max(0, (screen_w - win_w) // 2)
         pos_y = max(0, (screen_h - win_h) // 2)
         self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
-        self.root.minsize(1200, 800)
+        self.root.minsize(1400, 950)
 
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
@@ -671,7 +671,8 @@ class MapperGUI:
         top.pack(fill="x")
 
         status_text = f"Gamepad: {self.gp_name}" if self.gp else f"Error: {self.gp_error}"
-        self.status_label = ttk.Label(top, text=status_text, font=("", 10, "bold"))
+        status_color = "black" if self.gp else "red"
+        self.status_label = ttk.Label(top, text=status_text, font=("", 10, "bold"), foreground=status_color)
         self.status_label.pack(anchor="center", pady=(0, 4))
 
         canvas_holder = ttk.Frame(top)
