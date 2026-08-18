@@ -22,6 +22,9 @@ DESKTOP_FILE="$DESKTOP_DIR/sc2-mapper.desktop"
 CONFIG_DIR="$HOME/.config/sc2_mapper"
 UDEV_RULE="/etc/udev/rules.d/99-uinput.rules"
 
+REPO_RAW_BASE="https://raw.githubusercontent.com/Vaddum/sc2_mapper_manager"
+REPO_BRANCHES=("main" "master")
+
 PAYLOAD_FILES=(sdl3_gamepad.py sc2_sdl3_mapper.py sc2_mapper_gui.py start_sc2_mapper.sh)
 
 # =============================================================================
@@ -30,6 +33,40 @@ PAYLOAD_FILES=(sdl3_gamepad.py sc2_sdl3_mapper.py sc2_mapper_gui.py start_sc2_ma
 
 check_zenity() {
   command -v zenity >/dev/null 2>&1 || { echo "zenity requis : sudo pacman -S zenity"; exit 1; }
+}
+
+# Exécute une commande en root via une boîte de dialogue Zenity pour le mot
+# de passe (fonctionne même sans terminal, contrairement à un simple sudo).
+run_sudo() {
+  local pass
+  pass=$(zenity --password --title="Mot de passe administrateur")
+  if [ -z "$pass" ]; then
+    return 1  # annulé
+  fi
+  echo "$pass" | sudo -S "$@" 2>/tmp/sc2_mapper_sudo_err
+  local status=$?
+  if [ $status -ne 0 ]; then
+    zenity --error --width=420 --text="Échec de la commande administrateur :\n\n$(cat /tmp/sc2_mapper_sudo_err 2>/dev/null)"
+  fi
+  rm -f /tmp/sc2_mapper_sudo_err
+  return $status
+}
+
+# Télécharge un fichier depuis le repo GitHub (essaie main puis master).
+# Usage : download_file <nom_fichier> <chemin_local_destination>
+download_file() {
+  local remote_name="$1" local_path="$2" branch url
+  for branch in "${REPO_BRANCHES[@]}"; do
+    url="$REPO_RAW_BASE/$branch/$remote_name"
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL "$url" -o "$local_path" 2>/dev/null && [ -s "$local_path" ] && return 0
+    elif command -v wget >/dev/null 2>&1; then
+      wget -q "$url" -O "$local_path" 2>/dev/null && [ -s "$local_path" ] && return 0
+    else
+      return 2  # ni curl ni wget
+    fi
+  done
+  return 1
 }
 
 is_installed() {
@@ -56,20 +93,44 @@ status_text() {
 # =============================================================================
 
 do_install() {
-  local missing_src=()
+  local work_dir
+  work_dir=$(mktemp -d)
+
+  # Utilise les fichiers locaux (à côté du script) s'ils existent déjà,
+  # sinon les télécharge depuis GitHub.
+  local to_download=()
   for f in "${PAYLOAD_FILES[@]}"; do
-    [ -f "$SCRIPT_DIR/$f" ] || missing_src+=("$f")
+    if [ -f "$SCRIPT_DIR/$f" ]; then
+      cp "$SCRIPT_DIR/$f" "$work_dir/$f"
+    else
+      to_download+=("$f")
+    fi
   done
-  if [ ${#missing_src[@]} -gt 0 ]; then
-    zenity --error --width=420 --text="Fichiers manquants à côté de ce script :\n\n$(printf '  - %s\n' "${missing_src[@]}")\nPlace-les dans le même dossier que sc2_mapper_manager.sh avant d'installer."
-    return
+
+  if [ ${#to_download[@]} -gt 0 ]; then
+    (
+      for f in "${to_download[@]}"; do
+        echo "# Téléchargement de $f..."
+        if ! download_file "$f" "$work_dir/$f"; then
+          echo "ECHEC:$f" >> "$work_dir/.dl_errors"
+        fi
+      done
+    ) | zenity --progress --pulsate --no-cancel --auto-close \
+        --title="Installation" --text="Téléchargement des fichiers depuis GitHub..."
+
+    if [ -f "$work_dir/.dl_errors" ]; then
+      zenity --error --width=420 --text="Échec du téléchargement :\n\n$(cat "$work_dir/.dl_errors")\n\nVérifie ta connexion internet, ou place les fichiers manuellement à côté de ce script."
+      rm -rf "$work_dir"
+      return
+    fi
   fi
 
   mkdir -p "$INSTALL_DIR" "$DESKTOP_DIR"
   for f in "${PAYLOAD_FILES[@]}"; do
-    cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
+    cp "$work_dir/$f" "$INSTALL_DIR/$f"
   done
   chmod +x "$INSTALL_DIR/start_sc2_mapper.sh"
+  rm -rf "$work_dir"
 
   cat > "$DESKTOP_FILE" << 'EOF'
 [Desktop Entry]
@@ -89,8 +150,12 @@ EOF
   pacman -Qi tk >/dev/null 2>&1 || missing_pkgs+=("tk")
   if [ ${#missing_pkgs[@]} -gt 0 ]; then
     if zenity --question --text="Paquets manquants : ${missing_pkgs[*]}\n\nLes installer maintenant (sudo pacman -S) ?"; then
-      sudo pacman -S --noconfirm "${missing_pkgs[@]}"
+      run_sudo pacman -S --noconfirm "${missing_pkgs[@]}"
     fi
+  fi
+
+  if ! python3 -c "import tkinter" >/dev/null 2>&1; then
+    zenity --warning --width=420 --text="Tkinter (paquet 'tk') n'est toujours pas disponible.\n\nL'interface graphique ne pourra pas s'ouvrir tant que ce n'est pas corrigé.\nEssaie manuellement : sudo pacman -S tk"
   fi
 
   if ! python3 -c "import evdev" >/dev/null 2>&1; then
@@ -102,10 +167,9 @@ EOF
   # --- Accès uinput sans sudo (optionnel) ---
   if [ ! -f "$UDEV_RULE" ]; then
     if zenity --question --text="Configurer l'accès à /dev/uinput sans sudo à chaque lancement ?\n(règle udev + ajout au groupe 'input' ; déconnexion/reconnexion nécessaire ensuite)"; then
-      echo 'KERNEL=="uinput", GROUP="input", MODE="0660"' | sudo tee "$UDEV_RULE" >/dev/null
-      sudo udevadm control --reload-rules
-      sudo usermod -aG input "$USER"
-      zenity --info --text="Règle udev installée.\nDéconnecte-toi/reconnecte-toi pour que l'appartenance au groupe 'input' prenne effet."
+      if run_sudo bash -c "echo 'KERNEL==\"uinput\", GROUP=\"input\", MODE=\"0660\"' > '$UDEV_RULE' && udevadm control --reload-rules && usermod -aG input '$USER'"; then
+        zenity --info --text="Règle udev installée.\nDéconnecte-toi/reconnecte-toi pour que l'appartenance au groupe 'input' prenne effet."
+      fi
     fi
   fi
 
@@ -138,8 +202,7 @@ do_uninstall() {
 
   if [ -f "$UDEV_RULE" ]; then
     if zenity --question --text="Supprimer aussi la règle udev ($UDEV_RULE) ?"; then
-      sudo rm -f "$UDEV_RULE"
-      sudo udevadm control --reload-rules
+      run_sudo bash -c "rm -f '$UDEV_RULE' && udevadm control --reload-rules"
     fi
   fi
 
