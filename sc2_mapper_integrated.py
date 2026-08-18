@@ -668,13 +668,13 @@ class MapperGUI:
         top.pack(fill="x")
 
         status_text = f"Gamepad: {self.gp_name}" if self.gp else f"Error: {self.gp_error}"
-        status_color = "black" if self.gp else "red"
+        status_color = "#1a7a1a" if self.gp else "red"
         self.status_label = ttk.Label(top, text=status_text, font=("", 10, "bold"), foreground=status_color)
         self.status_label.pack(anchor="center", pady=(0, 4))
 
         canvas_holder = ttk.Frame(top)
         canvas_holder.pack(anchor="center")
-        self.canvas = tk.Canvas(canvas_holder, width=900, height=620, bg="#1e1e1e", highlightthickness=1,
+        self.canvas = tk.Canvas(canvas_holder, width=1600, height=830, bg="#1e1e1e", highlightthickness=1,
                                  highlightbackground="#555")
         self.canvas.pack()
         self._init_canvas_items()
@@ -714,7 +714,7 @@ class MapperGUI:
         bottom.pack(fill="x")
         ttk.Button(bottom, text="Exit", command=self.on_close).pack(side="right", padx=4)
         ttk.Button(bottom, text="Save", command=self.save_config).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Launch mapping", command=self._launch_mapping,
+        ttk.Button(bottom, text="Map it!", command=self._launch_mapping,
                    style="Green.TButton").pack(side="right", padx=4)
         self.mapping_status_label = ttk.Label(bottom, text="Mapping: inactive", foreground="#888")
         self.mapping_status_label.pack(side="left", padx=(0, 12))
@@ -921,51 +921,56 @@ class MapperGUI:
         self.button_shapes = {}
 
         positions = {
-            "LEFT_SHOULDER": (90, 30), "RIGHT_SHOULDER": (630, 30),
-            "DPAD_UP": (165, 95), "DPAD_LEFT": (112, 130), "DPAD_RIGHT": (217, 130), "DPAD_DOWN": (165, 165),
-            "BACK": (285, 105), "GUIDE": (360, 135), "START": (435, 105),
-            "NORTH": (600, 95), "WEST": (547, 130), "EAST": (652, 130), "SOUTH": (600, 165),
+            "LEFT_SHOULDER": (160, 50), "RIGHT_SHOULDER": (1440, 50),
+            "DPAD_UP": (280, 170), "DPAD_LEFT": (210, 240), "DPAD_RIGHT": (350, 240), "DPAD_DOWN": (280, 310),
+            "BACK": (650, 190), "GUIDE": (800, 240), "START": (950, 190),
+            "NORTH": (1320, 170), "WEST": (1250, 240), "EAST": (1390, 240), "SOUTH": (1320, 310),
+        }
+        canvas_labels = {
+            "DPAD_UP": "UP", "DPAD_DOWN": "DOWN", "DPAD_LEFT": "LEFT", "DPAD_RIGHT": "RIGHT",
+            "NORTH": "Y", "SOUTH": "A", "WEST": "X", "EAST": "B",
         }
         for name, (x, y) in positions.items():
-            shape = c.create_oval(x - 24, y - 24, x + 24, y + 24, fill="#333", outline="#888", width=3)
-            c.create_text(x, y + 38, text=name.replace("_", " "), fill="#aaa", font=("", 10))
+            shape = c.create_oval(x - 26, y - 26, x + 26, y + 26, fill="#333", outline="#888", width=3)
+            label = canvas_labels.get(name, name.replace("_", " "))
+            c.create_text(x, y + 42, text=label, fill="#aaa", font=("", 11))
             self.button_shapes[name] = shape
 
-        self.left_stick_box = c.create_rectangle(90, 220, 270, 330, outline="#555", width=3)
-        c.create_text(180, 345, text="Left stick (outline = click)", fill="#aaa", font=("", 10))
-        self.left_stick_dot = c.create_oval(171, 266, 189, 284, fill="cyan")
+        self.left_stick_box = c.create_rectangle(190, 420, 430, 560, outline="#555", width=3)
+        c.create_text(310, 578, text="Left stick (outline = click)", fill="#aaa", font=("", 11))
+        self.left_stick_dot = c.create_oval(301, 481, 319, 499, fill="cyan")
 
-        self.right_stick_box = c.create_rectangle(450, 220, 630, 330, outline="#555", width=3)
-        c.create_text(540, 345, text="Right stick (outline = click)", fill="#aaa", font=("", 10))
-        self.right_stick_dot = c.create_oval(531, 266, 549, 284, fill="cyan")
+        self.right_stick_box = c.create_rectangle(1170, 420, 1410, 560, outline="#555", width=3)
+        c.create_text(1290, 578, text="Right stick (outline = click)", fill="#aaa", font=("", 11))
+        self.right_stick_dot = c.create_oval(1281, 481, 1299, 499, fill="cyan")
 
-        c.create_rectangle(22, 220, 52, 330, outline="#555", width=3)
-        c.create_text(37, 345, text="LT", fill="#aaa", font=("", 10))
-        self.lt_bar = c.create_rectangle(22, 330, 52, 330, fill="orange")
+        c.create_rectangle(60, 420, 100, 560, outline="#555", width=3)
+        c.create_text(80, 578, text="LT", fill="#aaa", font=("", 11))
+        self.lt_bar = c.create_rectangle(60, 560, 100, 560, fill="orange")
 
-        c.create_rectangle(667, 220, 697, 330, outline="#555", width=3)
-        c.create_text(682, 345, text="RT", fill="#aaa", font=("", 10))
-        self.rt_bar = c.create_rectangle(667, 330, 697, 330, fill="orange")
+        c.create_rectangle(1500, 420, 1540, 560, outline="#555", width=3)
+        c.create_text(1520, 578, text="RT", fill="#aaa", font=("", 11))
+        self.rt_bar = c.create_rectangle(1500, 560, 1540, 560, fill="orange")
 
         grip_positions = {
-            "LEFT_PADDLE1": (90, 380), "LEFT_PADDLE2": (150, 380),
-            "RIGHT_PADDLE1": (570, 380), "RIGHT_PADDLE2": (630, 380),
+            "LEFT_PADDLE1": (190, 615), "LEFT_PADDLE2": (255, 615),
+            "RIGHT_PADDLE1": (1345, 615), "RIGHT_PADDLE2": (1410, 615),
         }
         grip_labels = {"LEFT_PADDLE1": "L4", "LEFT_PADDLE2": "L5", "RIGHT_PADDLE1": "R4", "RIGHT_PADDLE2": "R5"}
         for name, (x, y) in grip_positions.items():
-            shape = c.create_rectangle(x - 22, y - 18, x + 22, y + 18, fill="#333", outline="#888", width=3)
-            c.create_text(x, y, text=grip_labels[name], fill="#ccc", font=("", 10, "bold"))
+            shape = c.create_rectangle(x - 24, y - 18, x + 24, y + 18, fill="#333", outline="#888", width=3)
+            c.create_text(x, y, text=grip_labels[name], fill="#ccc", font=("", 11, "bold"))
             self.button_shapes[name] = shape
 
-        self.touch0_rect = c.create_rectangle(45, 420, 337, 570, outline="#555", width=3)
-        c.create_text(191, 585, text="Left pad (outline = click)", fill="#aaa", font=("", 10))
-        self.touch0_dot = c.create_oval(183, 487, 199, 503, fill="", outline="")
+        self.touch0_rect = c.create_rectangle(100, 665, 750, 780, outline="#555", width=3)
+        c.create_text(425, 797, text="Left pad (outline = click)", fill="#aaa", font=("", 11))
+        self.touch0_dot = c.create_oval(417, 715, 433, 731, fill="", outline="")
 
-        self.touch1_rect = c.create_rectangle(382, 420, 675, 570, outline="#555", width=3)
-        c.create_text(528, 585, text="Right pad (outline = click)", fill="#aaa", font=("", 10))
-        self.touch1_dot = c.create_oval(520, 487, 536, 503, fill="", outline="")
+        self.touch1_rect = c.create_rectangle(850, 665, 1500, 780, outline="#555", width=3)
+        c.create_text(1175, 797, text="Right pad (outline = click)", fill="#aaa", font=("", 11))
+        self.touch1_dot = c.create_oval(1167, 715, 1183, 731, fill="", outline="")
 
-        self.gyro_text = c.create_text(360, 605, text="", fill="#aaa", font=("", 10))
+        self.gyro_text = c.create_text(800, 815, text="", fill="#aaa", font=("", 11))
 
     def _poll_visual(self):
         if self.gp is None:
@@ -982,24 +987,24 @@ class MapperGUI:
         c.itemconfig(self.right_stick_box, outline="#4CAF50" if self.gp.button("RIGHT_STICK") else "#555")
 
         lx, ly = self.gp.axis("LEFTX"), self.gp.axis("LEFTY")
-        cx, cy = 180 + (lx / 32767.0) * 75, 275 + (ly / 32767.0) * 45
+        cx, cy = 310 + (lx / 32767.0) * 95, 490 + (ly / 32767.0) * 55
         c.coords(self.left_stick_dot, cx - 9, cy - 9, cx + 9, cy + 9)
 
         rx, ry = self.gp.axis("RIGHTX"), self.gp.axis("RIGHTY")
-        cx2, cy2 = 540 + (rx / 32767.0) * 75, 275 + (ry / 32767.0) * 45
+        cx2, cy2 = 1290 + (rx / 32767.0) * 95, 490 + (ry / 32767.0) * 55
         c.coords(self.right_stick_dot, cx2 - 9, cy2 - 9, cx2 + 9, cy2 + 9)
 
         lt = max(0, self.gp.axis("LEFT_TRIGGER"))
         rt = max(0, self.gp.axis("RIGHT_TRIGGER"))
-        lt_h = (lt / 32767.0) * 110
-        rt_h = (rt / 32767.0) * 110
-        c.coords(self.lt_bar, 22, 330 - lt_h, 52, 330)
-        c.coords(self.rt_bar, 667, 330 - rt_h, 697, 330)
+        lt_h = (lt / 32767.0) * 140
+        rt_h = (rt / 32767.0) * 140
+        c.coords(self.lt_bar, 60, 560 - lt_h, 100, 560)
+        c.coords(self.rt_bar, 1500, 560 - rt_h, 1540, 560)
 
         num_pads = self.gp.num_touchpads()
         for pad_idx, dot, (x0, y0, x1, y1) in [
-            (0, self.touch0_dot, (45, 420, 337, 570)),
-            (1, self.touch1_dot, (382, 420, 675, 570)),
+            (0, self.touch0_dot, (100, 665, 750, 780)),
+            (1, self.touch1_dot, (850, 665, 1500, 780)),
         ]:
             if pad_idx < num_pads:
                 ok, down, tx, ty, pressure = self.gp.touchpad_finger(pad_idx)
