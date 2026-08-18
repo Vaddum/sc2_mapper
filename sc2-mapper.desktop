@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=SC2 Mapper
-Comment=SDL3-based mapping configuration and launcher for the Steam Controller 2026
-Exec=sh -c "python3 $HOME/.local/bin/sc2_mapper_integrated.py"
-Terminal=false
-Icon=input-gaming
-Categories=Game;Utility;
