@@ -597,12 +597,6 @@ class MapperGUI:
         except (ValueError, TypeError):
             return default
 
-    def reset_defaults(self):
-        if not messagebox.askyesno("Reset", "Revert to default values (not saved until you click Save)?"):
-            return
-        self.config_data = json.loads(json.dumps(DEFAULT_CONFIG))
-        self._populate_widgets()
-
     def _launch_mapping(self):
         cfg, invalid = self._validate_and_gather()
         if invalid:
@@ -667,6 +661,9 @@ class MapperGUI:
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
 
+        style = ttk.Style()
+        style.configure("Green.TButton", foreground="#1a7a1a", font=("", 9, "bold"))
+
         top = ttk.Frame(main)
         top.pack(fill="x")
 
@@ -715,10 +712,10 @@ class MapperGUI:
 
         bottom = ttk.Frame(self.root, padding=8)
         bottom.pack(fill="x")
-        ttk.Button(bottom, text="Save", command=self.save_config).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Reset to defaults", command=self.reset_defaults).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Launch mapping", command=self._launch_mapping).pack(side="right", padx=4)
         ttk.Button(bottom, text="Exit", command=self.on_close).pack(side="right", padx=4)
+        ttk.Button(bottom, text="Save", command=self.save_config).pack(side="right", padx=4)
+        ttk.Button(bottom, text="Launch mapping", command=self._launch_mapping,
+                   style="Green.TButton").pack(side="right", padx=4)
         self.mapping_status_label = ttk.Label(bottom, text="Mapping: inactive", foreground="#888")
         self.mapping_status_label.pack(side="left", padx=(0, 12))
         self.capture_label = ttk.Label(bottom, text="", foreground="orange")
