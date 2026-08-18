@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-sdl3_gamepad.py
-Liaisons ctypes minimalistes vers libSDL3 pour lire l'état d'une manette
-(boutons, axes, pavés tactiles, gyroscope). Utilisé par sc2_sdl3_mapper.py
-(mapping en conditions réelles) et sc2_mapper_gui.py (interface de config).
-"""
-
 import ctypes
 import ctypes.util
 
@@ -24,15 +17,13 @@ AXIS_NAMES = ["LEFTX", "LEFTY", "RIGHTX", "RIGHTY", "LEFT_TRIGGER", "RIGHT_TRIGG
 
 
 class SDL3Gamepad:
-    """Enveloppe simple autour d'une manette SDL3 ouverte."""
-
     def __init__(self, enable_gyro=False):
         libname = ctypes.util.find_library("SDL3") or "libSDL3.so.0"
         try:
             self.sdl = ctypes.CDLL(libname)
         except OSError as exc:
             raise RuntimeError(
-                f"Impossible de charger {libname}. Installe le paquet 'sdl3' (pacman -S sdl3)."
+                f"Could not load {libname}. Install the 'sdl3' package (pacman -S sdl3)."
             ) from exc
 
         self.enable_gyro = enable_gyro
@@ -94,22 +85,21 @@ class SDL3Gamepad:
         sdl.SDL_Quit.argtypes = []
 
     def open_first(self):
-        """Initialise SDL, ouvre la première manette détectée. Retourne son nom."""
         flags = SDL_INIT_GAMEPAD | (SDL_INIT_SENSOR if self.enable_gyro else 0)
         if not self.sdl.SDL_Init(flags):
-            raise RuntimeError("Échec SDL_Init : " + self.sdl.SDL_GetError().decode(errors="replace"))
+            raise RuntimeError("SDL_Init failed: " + self.sdl.SDL_GetError().decode(errors="replace"))
 
         count = ctypes.c_int(0)
         ids = self.sdl.SDL_GetGamepads(ctypes.byref(count))
         if count.value == 0:
-            raise RuntimeError("Aucune manette détectée par SDL3.")
+            raise RuntimeError("No gamepad detected by SDL3.")
 
         self.gamepad = self.sdl.SDL_OpenGamepad(ids[0])
         if not self.gamepad:
-            raise RuntimeError("Échec ouverture manette : " + self.sdl.SDL_GetError().decode(errors="replace"))
+            raise RuntimeError("Failed to open gamepad: " + self.sdl.SDL_GetError().decode(errors="replace"))
 
         name = self.sdl.SDL_GetGamepadName(self.gamepad)
-        name_str = name.decode(errors="replace") if name else "inconnue"
+        name_str = name.decode(errors="replace") if name else "unknown"
 
         if self.enable_gyro:
             if self.sdl.SDL_GamepadHasSensor(self.gamepad, SDL_SENSOR_GYRO):
@@ -132,7 +122,6 @@ class SDL3Gamepad:
         return self.sdl.SDL_GetNumGamepadTouchpads(self.gamepad)
 
     def touchpad_finger(self, pad_idx, finger=0):
-        """Retourne (ok, down, x, y, pressure) pour un doigt sur un pavé donné."""
         down = ctypes.c_bool(False)
         x = ctypes.c_float(0.0)
         y = ctypes.c_float(0.0)
@@ -144,7 +133,6 @@ class SDL3Gamepad:
         return bool(ok), down.value, x.value, y.value, pressure.value
 
     def gyro(self):
-        """Retourne (ok, gx, gy, gz) en rad/s."""
         if not self.enable_gyro:
             return False, 0.0, 0.0, 0.0
         data = (ctypes.c_float * 3)()
@@ -152,7 +140,6 @@ class SDL3Gamepad:
         return bool(ok), data[0], data[1], data[2]
 
     def rumble(self, low_freq, high_freq, duration_ms):
-        """Déclenche une vibration (retour haptique). Intensités 0-65535."""
         return bool(self.sdl.SDL_RumbleGamepad(self.gamepad, low_freq, high_freq, duration_ms))
 
     def close(self):

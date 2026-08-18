@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-#
-# start_sc2_mapper.sh
-# Wrapper de confort pour lancer sc2_sdl3_mapper.py proprement :
-#   - ferme Steam s'il tourne (pour libérer le HID de la manette)
-#   - s'assure que le module uinput est chargé
-#   - lance le mapper avec ou sans sudo selon les permissions
-#
-# Place ce script dans le même dossier que sc2_sdl3_mapper.py.
-
 set -uo pipefail
 
 RED='\033[0;31m'
@@ -19,54 +10,43 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAPPER="$SCRIPT_DIR/sc2_sdl3_mapper.py"
 
-echo -e "${CYAN}=== Lancement du mapper Steam Controller 2026 ===${NC}"
+echo -e "${CYAN}=== Starting Steam Controller 2026 mapper ===${NC}"
 
 if [ ! -f "$MAPPER" ]; then
-  echo -e "${RED}Introuvable : $MAPPER${NC}"
-  echo "Place ce wrapper dans le même dossier que sc2_sdl3_mapper.py, ou édite la variable MAPPER."
+  echo -e "${RED}Not found: $MAPPER${NC}"
+  echo "Place this wrapper in the same folder as sc2_sdl3_mapper.py, or edit the MAPPER variable."
   exit 1
 fi
 
-# ---------------------------------------------------------------------------
-# 1. Fermer Steam s'il tourne (libère l'accès exclusif au HID de la manette)
-# ---------------------------------------------------------------------------
 if pgrep -x steam >/dev/null 2>&1; then
-  echo -e "${YELLOW}Steam est en cours d'exécution — fermeture pour libérer la manette...${NC}"
+  echo -e "${YELLOW}Steam is running - closing it to release the gamepad...${NC}"
   killall steam >/dev/null 2>&1
-  # Attendre que le process disparaisse vraiment (jusqu'à 10s)
   for i in $(seq 1 10); do
     pgrep -x steam >/dev/null 2>&1 || break
     sleep 1
   done
   if pgrep -x steam >/dev/null 2>&1; then
-    echo -e "${RED}Steam ne s'est pas fermé proprement. Ferme-le manuellement puis relance ce script.${NC}"
+    echo -e "${RED}Steam did not close properly. Close it manually then rerun this script.${NC}"
     exit 1
   fi
-  echo -e "${GREEN}Steam fermé.${NC}"
+  echo -e "${GREEN}Steam closed.${NC}"
 else
-  echo "Steam n'est pas lancé, on continue."
+  echo "Steam is not running, continuing."
 fi
 
-# ---------------------------------------------------------------------------
-# 2. S'assurer que le module uinput est chargé
-# ---------------------------------------------------------------------------
 if ! lsmod | grep -q '^uinput'; then
-  echo "Chargement du module uinput..."
+  echo "Loading uinput module..."
   sudo modprobe uinput
 fi
 
-# ---------------------------------------------------------------------------
-# 3. Lancer le mapper (sudo seulement si /dev/uinput n'est pas accessible
-#    directement, ex. si la règle udev n'a pas encore été mise en place)
-# ---------------------------------------------------------------------------
 if [ -w /dev/uinput ]; then
-  echo -e "${GREEN}Accès direct à /dev/uinput, lancement sans sudo.${NC}"
+  echo -e "${GREEN}Direct access to /dev/uinput, running without sudo.${NC}"
   RUNNER="python3"
 else
-  echo -e "${YELLOW}Pas d'accès direct à /dev/uinput, lancement avec sudo.${NC}"
-  echo "(Pour éviter ça à l'avenir : voir la règle udev mentionnée précédemment)"
+  echo -e "${YELLOW}No direct access to /dev/uinput, running with sudo.${NC}"
+  echo "(To avoid this in the future: set up the udev rule.)"
   RUNNER="sudo python3"
 fi
 
-echo -e "${CYAN}Démarrage du mapping — Ctrl+C pour arrêter proprement.${NC}\n"
+echo -e "${CYAN}Starting mapping - Ctrl+C to stop cleanly.${NC}\n"
 exec $RUNNER "$MAPPER" "$@"

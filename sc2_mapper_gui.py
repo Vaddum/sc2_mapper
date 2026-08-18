@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""
-sc2_mapper_gui.py
-Interface graphique de configuration pour le Steam Controller 2026 (Triton).
-
-- Visualisation en direct des boutons/sticks/gâchettes/pavés tactiles (façon
-  `testcontroller` de SDL3), pour vérifier que tout est bien lu.
-- Panneau de configuration du mapping (touche assignée à chaque entrée).
-- Sauvegarde dans ~/.config/sc2_mapper/config.json, automatiquement repris
-  par sc2_sdl3_mapper.py au prochain lancement.
-
-Prérequis :
-    sudo pacman -S sdl3 tk
-    pip install evdev --break-system-packages
-
-Usage :
-    python3 sc2_mapper_gui.py
-"""
-
 import sys
 import os
 import json
@@ -31,14 +13,10 @@ from sdl3_gamepad import SDL3Gamepad, BUTTON_NAMES, AXIS_NAMES
 try:
     from evdev import ecodes as e
 except ImportError:
-    print("Le module 'evdev' est requis : pip install evdev --break-system-packages")
+    print("The 'evdev' module is required: pip install evdev --break-system-packages")
     sys.exit(1)
 
 CONFIG_PATH = os.path.expanduser("~/.config/sc2_mapper/config.json")
-
-# =============================================================================
-# Valeurs par défaut (identiques à sc2_sdl3_mapper.py)
-# =============================================================================
 
 DEFAULT_CONFIG = {
     "BUTTON_MAP": {
@@ -72,17 +50,16 @@ DEFAULT_CONFIG = {
     "DEADZONE": 8000,
 }
 
-# Étiquettes lisibles pour chaque bouton
 BUTTON_LABELS = {
-    "SOUTH": "A (bas)", "EAST": "B (droite)", "WEST": "X (gauche)", "NORTH": "Y (haut)",
-    "BACK": "Back / Select", "START": "Start / Menu", "GUIDE": "Bouton Steam",
-    "LEFT_STICK": "Clic stick gauche", "RIGHT_STICK": "Clic stick droit",
+    "SOUTH": "A (bottom)", "EAST": "B (right)", "WEST": "X (left)", "NORTH": "Y (top)",
+    "BACK": "Back / Select", "START": "Start / Menu", "GUIDE": "Steam button",
+    "LEFT_STICK": "Left stick click", "RIGHT_STICK": "Right stick click",
     "LEFT_SHOULDER": "LB", "RIGHT_SHOULDER": "RB",
-    "DPAD_UP": "D-pad Haut", "DPAD_DOWN": "D-pad Bas",
-    "DPAD_LEFT": "D-pad Gauche", "DPAD_RIGHT": "D-pad Droite",
-    "LEFT_PADDLE1": "Grip arrière L4", "RIGHT_PADDLE1": "Grip arrière R4",
-    "LEFT_PADDLE2": "Grip arrière L5", "RIGHT_PADDLE2": "Grip arrière R5",
-    "TOUCHPAD": "Clic pavé (générique)",
+    "DPAD_UP": "D-pad Up", "DPAD_DOWN": "D-pad Down",
+    "DPAD_LEFT": "D-pad Left", "DPAD_RIGHT": "D-pad Right",
+    "LEFT_PADDLE1": "Back grip L4", "RIGHT_PADDLE1": "Back grip R4",
+    "LEFT_PADDLE2": "Back grip L5", "RIGHT_PADDLE2": "Back grip R5",
+    "TOUCHPAD": "Touchpad click (generic)",
 }
 BUTTON_ORDER = [
     "SOUTH", "EAST", "WEST", "NORTH", "BACK", "START", "GUIDE",
@@ -92,9 +69,6 @@ BUTTON_ORDER = [
     "LEFT_PADDLE1", "RIGHT_PADDLE1", "LEFT_PADDLE2", "RIGHT_PADDLE2",
 ]
 
-# Correspondance touche physique (AZERTY) -> code evdev, pour le bouton "Capturer"
-# evdev KEY_* représente une POSITION physique (référence QWERTY) ; sur un clavier
-# AZERTY, appuyer sur la touche qui affiche 'A' déclenche donc KEY_Q, etc.
 AZERTY_CHAR_TO_KEYCODE = {
     "a": "KEY_Q", "b": "KEY_B", "c": "KEY_C", "d": "KEY_D", "e": "KEY_E",
     "f": "KEY_F", "g": "KEY_G", "h": "KEY_H", "i": "KEY_I", "j": "KEY_J",
@@ -118,7 +92,6 @@ KEYSYM_TO_KEYCODE = {
 
 
 def keysym_to_evdev(keysym):
-    """Convertit un keysym Tkinter (clavier AZERTY) en nom de code evdev."""
     low = keysym.lower()
     if low in KEYSYM_TO_KEYCODE:
         return KEYSYM_TO_KEYCODE[low]
@@ -129,20 +102,16 @@ def keysym_to_evdev(keysym):
 
 def valid_evdev_name(name):
     if not name:
-        return True  # champ vide = non assigné, autorisé
+        return True
     return hasattr(e, name)
 
-
-# =============================================================================
-# Application
-# =============================================================================
 
 class MapperGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Steam Controller 2026 — Configuration du mapping")
+        self.root.title("Steam Controller 2026 - Mapping Configuration")
         self.config_data = self.load_config()
-        self.capture_target = None  # StringVar en attente de capture clavier
+        self.capture_target = None
 
         self.gp = None
         self.gp_name = None
@@ -162,15 +131,12 @@ class MapperGUI:
         if self.gp:
             self._poll_visual()
 
-    # -------------------------------------------------------------------
-    # Config I/O
-    # -------------------------------------------------------------------
     def load_config(self):
         if os.path.isfile(CONFIG_PATH):
             try:
                 with open(CONFIG_PATH) as f:
                     data = json.load(f)
-                merged = json.loads(json.dumps(DEFAULT_CONFIG))  # copie profonde
+                merged = json.loads(json.dumps(DEFAULT_CONFIG))
                 merged.update(data)
                 return merged
             except (json.JSONDecodeError, OSError):
@@ -181,31 +147,30 @@ class MapperGUI:
         cfg, invalid = self._validate_and_gather()
         if invalid:
             messagebox.showerror(
-                "Nom de touche invalide",
-                "Ces valeurs ne correspondent à aucun code evdev connu :\n\n" + "\n".join(invalid)
+                "Invalid key name",
+                "These values do not match any known evdev code:\n\n" + "\n".join(invalid)
             )
             return
         self._write_config(cfg)
-        messagebox.showinfo("Sauvegardé", f"Config enregistrée dans :\n{CONFIG_PATH}\n\n"
-                                           "Elle sera reprise automatiquement au prochain lancement "
-                                           "de sc2_sdl3_mapper.py.")
+        messagebox.showinfo("Saved", f"Config saved to:\n{CONFIG_PATH}\n\n"
+                                      "It will be picked up automatically the next time "
+                                      "sc2_sdl3_mapper.py runs.")
 
     def _validate_and_gather(self):
-        """Retourne (config, None) si valide, ou (None, [messages d'erreur]) sinon."""
         cfg = self._gather_from_widgets()
         invalid = []
         for bname, var in self.button_vars.items():
             if not valid_evdev_name(var.get().strip()):
-                invalid.append(f"{BUTTON_LABELS.get(bname, bname)} : '{var.get()}'")
+                invalid.append(f"{BUTTON_LABELS.get(bname, bname)}: '{var.get()}'")
         for var in self.left_stick_vars:
             if not valid_evdev_name(var.get().strip()):
-                invalid.append(f"Stick gauche : '{var.get()}'")
+                invalid.append(f"Left stick: '{var.get()}'")
         for var, _ in self.trigger_vars.values():
             if not valid_evdev_name(var.get().strip()):
-                invalid.append(f"Gâchette : '{var.get()}'")
+                invalid.append(f"Trigger: '{var.get()}'")
         for var in self.touchpad_vars.values():
             if not valid_evdev_name(var.get().strip()):
-                invalid.append(f"Pavé : '{var.get()}'")
+                invalid.append(f"Touchpad: '{var.get()}'")
         if invalid:
             return None, invalid
         return cfg, None
@@ -254,20 +219,17 @@ class MapperGUI:
             return default
 
     def reset_defaults(self):
-        if not messagebox.askyesno("Réinitialiser", "Revenir aux valeurs par défaut (non sauvegardé tant que tu ne cliques pas sur Enregistrer) ?"):
+        if not messagebox.askyesno("Reset", "Revert to default values (not saved until you click Save)?"):
             return
         self.config_data = json.loads(json.dumps(DEFAULT_CONFIG))
         self._populate_widgets()
 
-    # -------------------------------------------------------------------
-    # Lancement / arrêt du mapping réel
-    # -------------------------------------------------------------------
     def _launch_mapping(self):
         cfg, invalid = self._validate_and_gather()
         if invalid:
             messagebox.showerror(
-                "Nom de touche invalide",
-                "Corrige ces valeurs avant de lancer le mapping :\n\n" + "\n".join(invalid)
+                "Invalid key name",
+                "Fix these values before launching the mapping:\n\n" + "\n".join(invalid)
             )
             return
         self._write_config(cfg)
@@ -276,8 +238,8 @@ class MapperGUI:
         wrapper = os.path.join(script_dir, "start_sc2_mapper.sh")
         if not os.path.isfile(wrapper):
             messagebox.showerror(
-                "Introuvable",
-                f"{wrapper} n'existe pas.\nPlace start_sc2_mapper.sh dans le même dossier que ce script."
+                "Not found",
+                f"{wrapper} does not exist.\nPlace start_sc2_mapper.sh in the same folder as this script."
             )
             return
 
@@ -290,24 +252,24 @@ class MapperGUI:
                 break
         if terminal_cmd is None:
             messagebox.showerror(
-                "Terminal introuvable",
-                "Aucun terminal graphique trouvé (konsole/gnome-terminal/xterm).\n"
-                "Lance manuellement : " + wrapper
+                "No terminal found",
+                "No graphical terminal found (konsole/gnome-terminal/xterm).\n"
+                "Run manually: " + wrapper
             )
             return
 
-        inner = f'"{wrapper}"; echo; read -p "Appuie sur Entree pour fermer..."'
+        inner = f'"{wrapper}"; echo; read -p "Press Enter to close..."'
         try:
             subprocess.Popen(terminal_cmd + [inner])
         except Exception as exc:
-            messagebox.showerror("Erreur", f"Impossible de lancer le mapping :\n{exc}")
+            messagebox.showerror("Error", f"Could not launch mapping:\n{exc}")
             return
 
-        self.capture_label.config(text="Mapping lancé dans un terminal (mot de passe sudo si demandé).")
+        self.capture_label.config(text="Mapping launched in a terminal (sudo password prompt if needed).")
 
     def _stop_mapping(self):
         subprocess.run(["pkill", "-f", "sc2_sdl3_mapper.py"])
-        self.capture_label.config(text="Arrêt du mapping demandé.")
+        self.capture_label.config(text="Stop requested.")
 
     def _poll_mapper_status(self):
         try:
@@ -316,19 +278,14 @@ class MapperGUI:
                 capture_output=True
             ).returncode == 0
         except FileNotFoundError:
-            running = False  # pgrep absent, pas bloquant
+            running = False
         if running:
-            self.mapping_status_label.config(text="Mapping : actif", foreground="#4CAF50")
+            self.mapping_status_label.config(text="Mapping: active", foreground="#4CAF50")
         else:
-            self.mapping_status_label.config(text="Mapping : inactif", foreground="#888")
+            self.mapping_status_label.config(text="Mapping: inactive", foreground="#888")
         self.root.after(2000, self._poll_mapper_status)
 
-    # -------------------------------------------------------------------
-    # Construction de l'interface
-    # -------------------------------------------------------------------
     def _build_widgets(self):
-        # Taille de fenêtre adaptée à la résolution de l'écran (plutôt qu'une
-        # valeur fixe), centrée à l'écran.
         self.root.update_idletasks()
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -342,11 +299,10 @@ class MapperGUI:
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
 
-        # --- Zone haute : statut + plan de la manette, centrés ---
         top = ttk.Frame(main)
         top.pack(fill="x")
 
-        status_text = f"Manette : {self.gp_name}" if self.gp else f"Erreur : {self.gp_error}"
+        status_text = f"Gamepad: {self.gp_name}" if self.gp else f"Error: {self.gp_error}"
         self.status_label = ttk.Label(top, text=status_text, font=("", 10, "bold"))
         self.status_label.pack(anchor="center", pady=(0, 4))
 
@@ -359,7 +315,6 @@ class MapperGUI:
 
         ttk.Separator(main).pack(fill="x", pady=8)
 
-        # --- Zone basse : panneau de config scrollable, pleine largeur ---
         bottom_container = ttk.Frame(main)
         bottom_container.pack(fill="both", expand=True)
 
@@ -371,14 +326,11 @@ class MapperGUI:
         canvas_scroll.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Recentre le contenu horizontalement si la fenêtre est plus large
-        # que le panneau de config, et garde le scroll region à jour.
         def _center_scroll_frame(event):
             canvas_scroll.itemconfig(scroll_window_id, width=max(event.width, scroll_frame.winfo_reqwidth()))
         scroll_window_id = canvas_scroll.create_window((0, 0), window=scroll_frame, anchor="nw")
         canvas_scroll.bind("<Configure>", _center_scroll_frame)
 
-        # Molette de souris sur tout le panneau
         def _on_mousewheel(event):
             if event.num == 4:
                 canvas_scroll.yview_scroll(-3, "units")
@@ -392,14 +344,13 @@ class MapperGUI:
 
         self._build_config_panel(scroll_frame)
 
-        # --- Boutons du bas ---
         bottom = ttk.Frame(self.root, padding=8)
         bottom.pack(fill="x")
-        ttk.Button(bottom, text="Enregistrer", command=self.save_config).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Réinitialiser aux valeurs par défaut", command=self.reset_defaults).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Arrêter le mapping", command=self._stop_mapping).pack(side="right", padx=4)
-        ttk.Button(bottom, text="Lancer le mapping", command=self._launch_mapping).pack(side="right", padx=4)
-        self.mapping_status_label = ttk.Label(bottom, text="Mapping : inactif", foreground="#888")
+        ttk.Button(bottom, text="Save", command=self.save_config).pack(side="right", padx=4)
+        ttk.Button(bottom, text="Reset to defaults", command=self.reset_defaults).pack(side="right", padx=4)
+        ttk.Button(bottom, text="Stop mapping", command=self._stop_mapping).pack(side="right", padx=4)
+        ttk.Button(bottom, text="Launch mapping", command=self._launch_mapping).pack(side="right", padx=4)
+        self.mapping_status_label = ttk.Label(bottom, text="Mapping: inactive", foreground="#888")
         self.mapping_status_label.pack(side="left", padx=(0, 12))
         self.capture_label = ttk.Label(bottom, text="", foreground="orange")
         self.capture_label.pack(side="left")
@@ -414,10 +365,9 @@ class MapperGUI:
         self.touchpad_move_vars = {}
 
         row = 0
-        FULL_SPAN = 9  # 3 blocs de 3 colonnes (label, champ, bouton Capturer)
+        FULL_SPAN = 9
 
-        # --- Boutons, sur 3 colonnes ---
-        ttk.Label(parent, text="Boutons", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w", pady=(4, 2))
+        ttk.Label(parent, text="Buttons", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w", pady=(4, 2))
         row += 1
         n_cols = 3
         k, m = divmod(len(BUTTON_ORDER), n_cols)
@@ -434,15 +384,14 @@ class MapperGUI:
                 self.button_vars[bname] = var
                 ttk.Label(parent, text=BUTTON_LABELS.get(bname, bname), width=18).grid(row=r, column=col_label, sticky="w")
                 ttk.Entry(parent, textvariable=var, width=16).grid(row=r, column=col_entry, sticky="w", padx=4)
-                ttk.Button(parent, text="Capturer", width=9, command=lambda v=var: self._start_capture(v)).grid(row=r, column=col_btn, padx=(0, 16), pady=1)
+                ttk.Button(parent, text="Capture", width=9, command=lambda v=var: self._start_capture(v)).grid(row=r, column=col_btn, padx=(0, 16), pady=1)
         row = button_row_start + max(len(g) for g in groups)
 
         ttk.Separator(parent).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="ew", pady=8)
         row += 1
 
-        # --- Sticks gauche/droit, côte à côte ---
-        ttk.Label(parent, text="Stick gauche", font=("", 11, "bold")).grid(row=row, column=0, columnspan=3, sticky="w")
-        ttk.Label(parent, text="Stick droit", font=("", 11, "bold")).grid(row=row, column=3, columnspan=3, sticky="w")
+        ttk.Label(parent, text="Left stick", font=("", 11, "bold")).grid(row=row, column=0, columnspan=3, sticky="w")
+        ttk.Label(parent, text="Right stick", font=("", 11, "bold")).grid(row=row, column=3, columnspan=3, sticky="w")
         row += 1
         stick_row_start = row
 
@@ -455,97 +404,94 @@ class MapperGUI:
         ttk.Combobox(parent, textvariable=self.right_stick_mode_var, values=["mouse", "none"], width=14, state="readonly").grid(row=row, column=4, sticky="w")
         row += 1
 
-        for label, keyname in zip(["Haut", "Bas", "Gauche", "Droite"], self.config_data["LEFT_STICK_KEYS"]):
+        for label, keyname in zip(["Up", "Down", "Left", "Right"], self.config_data["LEFT_STICK_KEYS"]):
             var = tk.StringVar(value=keyname)
             self.left_stick_vars.append(var)
             ttk.Label(parent, text=f"  {label}").grid(row=row, column=0, sticky="w")
             ttk.Entry(parent, textvariable=var, width=16).grid(row=row, column=1, sticky="w", padx=4)
-            ttk.Button(parent, text="Capturer", width=9, command=lambda v=var: self._start_capture(v)).grid(row=row, column=2)
+            ttk.Button(parent, text="Capture", width=9, command=lambda v=var: self._start_capture(v)).grid(row=row, column=2)
             row += 1
 
         self.right_stick_sens_var = tk.StringVar(value=str(self.config_data["RIGHT_STICK_MOUSE_SENSITIVITY"]))
-        ttk.Label(parent, text="  Sensibilité souris").grid(row=stick_row_start + 1, column=3, sticky="w")
+        ttk.Label(parent, text="  Mouse sensitivity").grid(row=stick_row_start + 1, column=3, sticky="w")
         ttk.Entry(parent, textvariable=self.right_stick_sens_var, width=16).grid(row=stick_row_start + 1, column=4, sticky="w", padx=4)
 
         ttk.Separator(parent).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="ew", pady=8)
         row += 1
 
-        # --- Gâchettes gauche/droite, côte à côte ---
-        ttk.Label(parent, text="Gâchettes", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w")
+        ttk.Label(parent, text="Triggers", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w")
         row += 1
-        for tname, tlabel, col_off in [("LEFT_TRIGGER", "Gauche", 0), ("RIGHT_TRIGGER", "Droite", 3)]:
+        for tname, tlabel, col_off in [("LEFT_TRIGGER", "Left", 0), ("RIGHT_TRIGGER", "Right", 3)]:
             keyname, threshold = self.config_data["TRIGGER_MAP"].get(tname, ["", 8000])
             kvar = tk.StringVar(value=keyname or "")
             tvar = tk.StringVar(value=str(threshold))
             self.trigger_vars[tname] = (kvar, tvar)
             ttk.Label(parent, text=tlabel).grid(row=row, column=col_off, sticky="w")
             ttk.Entry(parent, textvariable=kvar, width=16).grid(row=row, column=col_off + 1, sticky="w", padx=4)
-            ttk.Button(parent, text="Capturer", width=9, command=lambda v=kvar: self._start_capture(v)).grid(row=row, column=col_off + 2)
-            ttk.Label(parent, text="  Seuil (0-32767)").grid(row=row + 1, column=col_off, sticky="w")
+            ttk.Button(parent, text="Capture", width=9, command=lambda v=kvar: self._start_capture(v)).grid(row=row, column=col_off + 2)
+            ttk.Label(parent, text="  Threshold (0-32767)").grid(row=row + 1, column=col_off, sticky="w")
             ttk.Entry(parent, textvariable=tvar, width=16).grid(row=row + 1, column=col_off + 1, sticky="w", padx=4)
         row += 2
 
         ttk.Separator(parent).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="ew", pady=8)
         row += 1
 
-        # --- Pavés tactiles gauche/droite, côte à côte ---
-        ttk.Label(parent, text="Pavés tactiles", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w")
+        ttk.Label(parent, text="Touchpads", font=("", 11, "bold")).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="w")
         row += 1
         self.touchpad_enabled_var = tk.BooleanVar(value=self.config_data["TOUCHPAD_ENABLED"])
-        ttk.Checkbutton(parent, text="Activés", variable=self.touchpad_enabled_var).grid(row=row, column=0, sticky="w")
+        ttk.Checkbutton(parent, text="Enabled", variable=self.touchpad_enabled_var).grid(row=row, column=0, sticky="w")
         row += 1
-        for pad_idx, pad_label, col_off in [("0", "Gauche - clic", 0), ("1", "Droit - clic", 3)]:
+        for pad_idx, pad_label, col_off in [("0", "Left - click", 0), ("1", "Right - click", 3)]:
             var = tk.StringVar(value=self.config_data["TOUCHPAD_MAP"].get(pad_idx, "") or "")
             self.touchpad_vars[pad_idx] = var
             ttk.Label(parent, text=pad_label).grid(row=row, column=col_off, sticky="w")
             ttk.Entry(parent, textvariable=var, width=16).grid(row=row, column=col_off + 1, sticky="w", padx=4)
-            ttk.Button(parent, text="Capturer", width=9, command=lambda v=var: self._start_capture(v)).grid(row=row, column=col_off + 2)
+            ttk.Button(parent, text="Capture", width=9, command=lambda v=var: self._start_capture(v)).grid(row=row, column=col_off + 2)
         row += 1
 
         self.touchpad_move_enabled_var = tk.BooleanVar(value=self.config_data["TOUCHPAD_MOVE_ENABLED"])
-        ttk.Checkbutton(parent, text="Glisser déplace la souris", variable=self.touchpad_move_enabled_var).grid(row=row, column=0, columnspan=3, sticky="w")
+        ttk.Checkbutton(parent, text="Dragging moves the mouse", variable=self.touchpad_move_enabled_var).grid(row=row, column=0, columnspan=3, sticky="w")
         row += 1
         move_pads_set = set(self.config_data.get("TOUCHPAD_MOVE_PADS", [0, 1]))
-        for pad_idx, pad_label, col_off in [(0, "  Pavé gauche déplace", 0), (1, "  Pavé droit déplace", 3)]:
+        for pad_idx, pad_label, col_off in [(0, "  Left pad moves", 0), (1, "  Right pad moves", 3)]:
             var = tk.BooleanVar(value=pad_idx in move_pads_set)
             self.touchpad_move_vars[str(pad_idx)] = var
             ttk.Checkbutton(parent, text=pad_label, variable=var).grid(row=row, column=col_off, columnspan=3, sticky="w")
         row += 1
         self.touchpad_sens_var = tk.StringVar(value=str(self.config_data["TOUCHPAD_MOUSE_SENSITIVITY"]))
-        ttk.Label(parent, text="  Sensibilité glissement").grid(row=row, column=0, sticky="w")
+        ttk.Label(parent, text="  Drag sensitivity").grid(row=row, column=0, sticky="w")
         ttk.Entry(parent, textvariable=self.touchpad_sens_var, width=16).grid(row=row, column=1, sticky="w", padx=4)
         row += 1
 
         self.touchpad_haptic_enabled_var = tk.BooleanVar(value=self.config_data.get("TOUCHPAD_HAPTIC_ENABLED", True))
-        ttk.Checkbutton(parent, text="Vibration au clic (retour haptique)", variable=self.touchpad_haptic_enabled_var).grid(row=row, column=0, columnspan=3, sticky="w")
+        ttk.Checkbutton(parent, text="Vibrate on click (haptic feedback)", variable=self.touchpad_haptic_enabled_var).grid(row=row, column=0, columnspan=3, sticky="w")
         row += 1
         self.touchpad_haptic_strength_var = tk.StringVar(value=str(self.config_data.get("TOUCHPAD_HAPTIC_STRENGTH", 20000)))
-        ttk.Label(parent, text="  Intensité (0-65535)").grid(row=row, column=0, sticky="w")
+        ttk.Label(parent, text="  Strength (0-65535)").grid(row=row, column=0, sticky="w")
         ttk.Entry(parent, textvariable=self.touchpad_haptic_strength_var, width=16).grid(row=row, column=1, sticky="w", padx=4)
         row += 1
         self.touchpad_haptic_duration_var = tk.StringVar(value=str(self.config_data.get("TOUCHPAD_HAPTIC_DURATION_MS", 15)))
-        ttk.Label(parent, text="  Durée (ms)").grid(row=row, column=0, sticky="w")
+        ttk.Label(parent, text="  Duration (ms)").grid(row=row, column=0, sticky="w")
         ttk.Entry(parent, textvariable=self.touchpad_haptic_duration_var, width=16).grid(row=row, column=1, sticky="w", padx=4)
-        ttk.Button(parent, text="Tester", width=9, command=self._test_haptic).grid(row=row, column=2)
+        ttk.Button(parent, text="Test", width=9, command=self._test_haptic).grid(row=row, column=2)
         row += 1
 
         ttk.Separator(parent).grid(row=row, column=0, columnspan=FULL_SPAN, sticky="ew", pady=8)
         row += 1
 
-        # --- Gyroscope + divers, côte à côte ---
-        ttk.Label(parent, text="Gyroscope", font=("", 11, "bold")).grid(row=row, column=0, columnspan=3, sticky="w")
-        ttk.Label(parent, text="Divers", font=("", 11, "bold")).grid(row=row, column=3, columnspan=3, sticky="w")
+        ttk.Label(parent, text="Gyro", font=("", 11, "bold")).grid(row=row, column=0, columnspan=3, sticky="w")
+        ttk.Label(parent, text="Misc", font=("", 11, "bold")).grid(row=row, column=3, columnspan=3, sticky="w")
         row += 1
         self.gyro_enabled_var = tk.BooleanVar(value=self.config_data["GYRO_ENABLED"])
-        ttk.Checkbutton(parent, text="Activé (visée souris)", variable=self.gyro_enabled_var).grid(row=row, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(parent, text="Enabled (mouse aim)", variable=self.gyro_enabled_var).grid(row=row, column=0, columnspan=2, sticky="w")
 
         self.deadzone_var = tk.StringVar(value=str(self.config_data["DEADZONE"]))
-        ttk.Label(parent, text="Zone morte sticks (0-32767)").grid(row=row, column=3, sticky="w")
+        ttk.Label(parent, text="Stick deadzone (0-32767)").grid(row=row, column=3, sticky="w")
         ttk.Entry(parent, textvariable=self.deadzone_var, width=16).grid(row=row, column=4, sticky="w", padx=4)
         row += 1
 
         self.gyro_sens_var = tk.StringVar(value=str(self.config_data["GYRO_SENSITIVITY"]))
-        ttk.Label(parent, text="  Sensibilité").grid(row=row, column=0, sticky="w")
+        ttk.Label(parent, text="  Sensitivity").grid(row=row, column=0, sticky="w")
         ttk.Entry(parent, textvariable=self.gyro_sens_var, width=16).grid(row=row, column=1, sticky="w", padx=4)
         row += 1
 
@@ -576,53 +522,42 @@ class MapperGUI:
         self.gyro_sens_var.set(str(self.config_data["GYRO_SENSITIVITY"]))
         self.deadzone_var.set(str(self.config_data["DEADZONE"]))
 
-    # -------------------------------------------------------------------
-    # Capture clavier
-    # -------------------------------------------------------------------
     def _start_capture(self, var):
         self.capture_target = var
-        self.capture_label.config(text="Appuie sur une touche du clavier... (Échap pour annuler)")
+        self.capture_label.config(text="Press a key on your keyboard... (Esc to cancel)")
 
     def _on_keypress(self, event):
         if self.capture_target is None:
             return
         if event.keysym.lower() == "escape":
-            self.capture_label.config(text="Capture annulée.")
+            self.capture_label.config(text="Capture cancelled.")
             self.capture_target = None
             return
         code = keysym_to_evdev(event.keysym)
         if code is None:
-            self.capture_label.config(text=f"Touche '{event.keysym}' non reconnue, tape le code evdev manuellement.")
+            self.capture_label.config(text=f"Key '{event.keysym}' not recognized, type the evdev code manually.")
         else:
             self.capture_target.set(code)
-            self.capture_label.config(text=f"Capturé : {code}")
+            self.capture_label.config(text=f"Captured: {code}")
         self.capture_target = None
 
     def _test_haptic(self):
         if self.gp is None:
-            self.capture_label.config(text="Pas de manette connectée, impossible de tester.")
+            self.capture_label.config(text="No gamepad connected, cannot test.")
             return
         strength = self._safe_int(self.touchpad_haptic_strength_var.get(), 20000)
         duration = self._safe_int(self.touchpad_haptic_duration_var.get(), 15)
         self.gp.rumble(strength, strength, duration)
-        self.capture_label.config(text=f"Vibration testée (intensité={strength}, durée={duration}ms)")
+        self.capture_label.config(text=f"Vibration tested (strength={strength}, duration={duration}ms)")
 
-    # -------------------------------------------------------------------
-    # Visualisation live
-    # -------------------------------------------------------------------
     def _init_canvas_items(self):
         c = self.canvas
         self.button_shapes = {}
 
-        # Boutons ronds (boutons face, D-pad, back/start/guide)
         positions = {
-            # Gâchettes/épaules tout en haut
             "LEFT_SHOULDER": (60, 30), "RIGHT_SHOULDER": (420, 30),
-            # D-pad, à gauche
             "DPAD_UP": (110, 90), "DPAD_LEFT": (75, 125), "DPAD_RIGHT": (145, 125), "DPAD_DOWN": (110, 160),
-            # Back / Guide / Start, au centre
             "BACK": (190, 100), "GUIDE": (240, 130), "START": (290, 100),
-            # Boutons face (A/B/X/Y), à droite
             "NORTH": (400, 90), "WEST": (365, 125), "EAST": (435, 125), "SOUTH": (400, 160),
         }
         for name, (x, y) in positions.items():
@@ -630,16 +565,14 @@ class MapperGUI:
             c.create_text(x, y + 30, text=name.replace("_", " "), fill="#aaa", font=("", 8))
             self.button_shapes[name] = shape
 
-        # Sticks (boîte + point mobile) — les clics des sticks colorent le contour
         self.left_stick_box = c.create_rectangle(60, 220, 180, 320, outline="#555", width=2)
-        c.create_text(120, 332, text="Stick gauche (clic = contour)", fill="#aaa", font=("", 8))
+        c.create_text(120, 332, text="Left stick (outline = click)", fill="#aaa", font=("", 8))
         self.left_stick_dot = c.create_oval(114, 264, 126, 276, fill="cyan")
 
         self.right_stick_box = c.create_rectangle(300, 220, 420, 320, outline="#555", width=2)
-        c.create_text(360, 332, text="Stick droit (clic = contour)", fill="#aaa", font=("", 8))
+        c.create_text(360, 332, text="Right stick (outline = click)", fill="#aaa", font=("", 8))
         self.right_stick_dot = c.create_oval(354, 264, 366, 276, fill="cyan")
 
-        # Gâchettes analogiques (barres verticales, tout à gauche/droite du bloc sticks)
         c.create_rectangle(15, 220, 35, 320, outline="#555", width=2)
         c.create_text(25, 332, text="LT", fill="#aaa", font=("", 8))
         self.lt_bar = c.create_rectangle(15, 320, 35, 320, fill="orange")
@@ -648,7 +581,6 @@ class MapperGUI:
         c.create_text(455, 332, text="RT", fill="#aaa", font=("", 8))
         self.rt_bar = c.create_rectangle(445, 320, 465, 320, fill="orange")
 
-        # Grips arrière (petits carrés en bas)
         grip_positions = {
             "LEFT_PADDLE1": (60, 355), "LEFT_PADDLE2": (100, 355),
             "RIGHT_PADDLE1": (380, 355), "RIGHT_PADDLE2": (420, 355),
@@ -659,14 +591,12 @@ class MapperGUI:
             c.create_text(x, y, text=grip_labels[name], fill="#ccc", font=("", 8, "bold"))
             self.button_shapes[name] = shape
 
-        # Pavés tactiles, en bas, bien espacés — le contour colore le vrai clic
-        # (bouton TOUCHPAD/MISC2), le point suit juste le contact du doigt
         self.touch0_rect = c.create_rectangle(30, 400, 225, 520, outline="#555", width=2)
-        c.create_text(127, 532, text="Pavé gauche (contour = clic)", fill="#aaa", font=("", 8))
+        c.create_text(127, 532, text="Left pad (outline = click)", fill="#aaa", font=("", 8))
         self.touch0_dot = c.create_oval(122, 455, 132, 465, fill="", outline="")
 
         self.touch1_rect = c.create_rectangle(255, 400, 450, 520, outline="#555", width=2)
-        c.create_text(352, 532, text="Pavé droit (contour = clic)", fill="#aaa", font=("", 8))
+        c.create_text(352, 532, text="Right pad (outline = click)", fill="#aaa", font=("", 8))
         self.touch1_dot = c.create_oval(347, 455, 357, 465, fill="", outline="")
 
         self.gyro_text = c.create_text(240, 560, text="", fill="#aaa", font=("", 8))
@@ -682,7 +612,6 @@ class MapperGUI:
             fill = "#4CAF50" if pressed else "#333"
             c.itemconfig(shape, fill=fill)
 
-        # Contour des boîtes de stick coloré quand on clique dessus
         c.itemconfig(self.left_stick_box, outline="#4CAF50" if self.gp.button("LEFT_STICK") else "#555")
         c.itemconfig(self.right_stick_box, outline="#4CAF50" if self.gp.button("RIGHT_STICK") else "#555")
 
@@ -716,7 +645,6 @@ class MapperGUI:
                 else:
                     c.itemconfig(dot, fill="", outline="")
 
-        # Vrai clic mécanique des pavés (bouton dédié, pas le simple contact)
         c.itemconfig(self.touch0_rect, outline="#4CAF50" if self.gp.button("TOUCHPAD") else "#555")
         c.itemconfig(self.touch1_rect, outline="#4CAF50" if self.gp.button("MISC2") else "#555")
 
@@ -724,7 +652,7 @@ class MapperGUI:
         if ok:
             c.itemconfig(self.gyro_text, text=f"Gyro x={gx:.2f} y={gy:.2f} z={gz:.2f}")
 
-        self.root.after(16, self._poll_visual)  # ~60 Hz
+        self.root.after(16, self._poll_visual)
 
     def on_close(self):
         if self.gp:
