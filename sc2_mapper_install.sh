@@ -11,26 +11,26 @@ else
 fi
 DESKTOP_ICON="$DESKTOP_DIR/sc2-mapper.desktop"
 
-REPO_RAW_URL="https://raw.githubusercontent.com/Vaddum/sc2_mapper/main/sc2_mapper_integrated.py"
+REPO_RAW_URL="https://raw.githubusercontent.com/Vaddum/sc2_mapper/main/Sc2_mapper.py"
 
-TARGET="$INSTALL_DIR/sc2_mapper_integrated.py"
+TARGET="$INSTALL_DIR/Sc2_mapper.py"
 
 echo "=== Steam Controller 2026 Mapper - Install ==="
 echo "Desktop folder detected: $DESKTOP_DIR"
 
 mkdir -p "$INSTALL_DIR"
 
-if [ -f "$SCRIPT_DIR/sc2_mapper_integrated.py" ]; then
-  cp "$SCRIPT_DIR/sc2_mapper_integrated.py" "$TARGET"
-  echo "Copied local sc2_mapper_integrated.py to $TARGET"
+if [ -f "$SCRIPT_DIR/Sc2_mapper.py" ]; then
+  cp "$SCRIPT_DIR/Sc2_mapper.py" "$TARGET"
+  echo "Copied local Sc2_mapper.py to $TARGET"
 else
-  echo "sc2_mapper_integrated.py not found next to this script, downloading from GitHub..."
+  echo "Sc2_mapper.py not found next to this script, downloading from GitHub..."
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL "$REPO_RAW_URL" -o "$TARGET"
   elif command -v wget >/dev/null 2>&1; then
     wget -q "$REPO_RAW_URL" -O "$TARGET"
   else
-    echo "Neither curl nor wget available. Install one, or place sc2_mapper_integrated.py next to this script."
+    echo "Neither curl nor wget available. Install one, or place Sc2_mapper.py next to this script."
     exit 1
   fi
   if [ ! -s "$TARGET" ]; then
